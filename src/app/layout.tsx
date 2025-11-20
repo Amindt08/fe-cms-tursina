@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { AppLayout } from '@/layout/AppLayout'
+import { AuthProvider } from '@/contexts/auth-context'
 
 export const metadata: Metadata = {
-  title: 'Sistem Antrian Rumah Sakit - RS Sehat Sentosa',
-  description: 'Sistem antrian digital rumah sakit modern dengan fitur lengkap',
+  title: 'CMS Tursina Kebab',
+  description: 'Content Management System for Website tursinakebab.id',
 }
 
 export default function RootLayout({
@@ -14,10 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className="font-sans antialiased">
-        <AppLayout>
-          {children}
-        </AppLayout>
+      <body>
+        <AuthProvider>
+            {children} 
+        </AuthProvider>
       </body>
     </html>
   )
