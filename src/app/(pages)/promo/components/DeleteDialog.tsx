@@ -9,45 +9,43 @@ import {
 } from "@/components/ui/dialog"
 import { Loader2 } from 'lucide-react'
 
-interface Menu {
+interface Promo {
   id: number
-  menu_name: string
+  promo_name: string
   image: string | File
-  details: string
-  price: number
-  category: string
   status: 'active' | 'inactive'
 }
 
 interface DeleteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  menu: Menu | null
+  promo: Promo | null
   onConfirm: () => void
   loading?: boolean
 }
 
-export function DeleteDialog({ open, onOpenChange, menu, onConfirm, loading = false }: DeleteDialogProps) {
+
+export function DeleteDialog({ open, onOpenChange, promo, onConfirm, loading = false }: DeleteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Hapus Menu</DialogTitle>
+          <DialogTitle>Hapus Promo</DialogTitle>
           <DialogDescription>
-            Apakah Anda yakin ingin menghapus menu <strong>{menu?.menu_name}</strong>?
+            Apakah Anda yakin ingin menghapus promo <strong>{promo?.promo_name}</strong>?
             Tindakan ini tidak dapat dibatalkan.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
             Batal
           </Button>
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             onClick={onConfirm}
             disabled={loading}
           >

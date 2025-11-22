@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 interface Menu {
   id: number
   menu_name: string
-  image: string
+  image: string | File
   details: string
   price: number
   category: string
@@ -95,78 +95,74 @@ export default function MenuPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  // Handle Save ke API
- // Di MenuPage.tsx - perbaiki handleSave
-const handleSave = async (formData: Omit<Menu, 'id'>) => {
-  try {
-    setSaving(true)
-    
-    let response: Response
-    const menuData = {
-      ...formData,
-      status: formData.status === 'active' ? 'active' : 'inactive'
-    }
+  const handleSave = async (formData: Omit<Menu, 'id'>) => {
+    try {
+      setSaving(true)
 
-    // Jika ada gambar base64, handle khusus
-    if (formData.image.startsWith('data:image')) {
-      // Convert base64 to file atau handle sesuai kebutuhan backend
-      // Untuk sementara, kita skip upload gambar terpisah
-      menuData.image = '' // Kosongkan dulu atau handle sesuai backend
-    }
+      const data = new FormData()
 
-    if (editingMenu) {
-      response = await fetch(API_ENDPOINTS.MENU_BY_ID(editingMenu.id), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(menuData)
-      })
-    } else {
-      response = await fetch(API_ENDPOINTS.MENU_TURSINA, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(menuData)
-      })
-    }
+      data.append('menu_name', formData.menu_name)
+      data.append('category', formData.category)
+      data.append('price', String(formData.price))
+      data.append('details', formData.details)
+      data.append('status', formData.status === 'active' ? 'active' : 'inactive')
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'Gagal menyimpan data menu')
-    }
+      if (formData.image instanceof File) {
+        data.append('image', formData.image)
+      }
 
-    const result = await response.json()
-    
-    if (result.success) {
-      toast.success(editingMenu ? 'Menu berhasil diupdate' : 'Menu berhasil ditambahkan')
-      await fetchMenus()
-      setIsDialogOpen(false)
-      setEditingMenu(null)
-    } else {
-      throw new Error(result.message || 'Gagal menyimpan data menu')
-    }
+      if (typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
+        data.append('old_image', formData.image)
+      }
 
-  } catch (err: unknown) {
-    console.error('Error saving menu:', err)
-    if (err instanceof Error) {
-      toast.error(err.message)
-    } else {
-      toast.error('Terjadi kesalahan saat menyimpan data')
+      let response: Response;
+
+      if (editingMenu) {
+        response = await fetch(API_ENDPOINTS.MENU_BY_ID(editingMenu.id), {
+          method: 'POST', 
+          body: data,
+        })
+      } else {
+        response = await fetch(API_ENDPOINTS.MENU_TURSINA, {
+          method: 'POST',
+          body: data,
+        })
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menyimpan data menu')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(editingMenu ? 'Menu berhasil diupdate' : 'Menu berhasil ditambahkan')
+        await fetchMenus()
+        setIsDialogOpen(false)
+        setEditingMenu(null)
+      } else {
+        throw new Error(result.message || 'Gagal menyimpan data menu')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error saving menu:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menyimpan data')
+      }
+    } finally {
+      setSaving(false)
     }
-  } finally {
-    setSaving(false)
   }
-}
 
-  // Handle Delete dari API
   const confirmDelete = async () => {
     if (!menuToDelete) return
 
     try {
       setLoading(true)
-      
+
       const response = await fetch(API_ENDPOINTS.MENU_BY_ID(menuToDelete.id), {
         method: 'DELETE',
         headers: {
@@ -180,10 +176,10 @@ const handleSave = async (formData: Omit<Menu, 'id'>) => {
       }
 
       const result = await response.json()
-      
+
       if (result.success) {
         toast.success('Menu berhasil dihapus')
-        await fetchMenus() // Refresh data
+        await fetchMenus() 
       } else {
         throw new Error(result.message || 'Gagal menghapus menu')
       }
@@ -207,8 +203,7 @@ const handleSave = async (formData: Omit<Menu, 'id'>) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Menu</h1>
-          <p className="text-gray-600">Kelola menu makanan dan minuman</p>
+          <h1 className="text-3xl font-bold text-gray-900">Menu Tursina</h1>
         </div>
         <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
           <Plus className="h-4 w-4 mr-2" />

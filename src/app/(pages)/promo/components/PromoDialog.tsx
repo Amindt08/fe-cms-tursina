@@ -16,47 +16,39 @@ import {
   Loader2
 } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
+import Image from 'next/image'
 
-interface Menu {
+interface Promo {
   id: number
-  menu_name: string
+  promo_name: string
   image: string | File
-  details: string
-  price: number
-  category: string
   status: 'active' | 'inactive'
 }
 
-interface MenuDialogProps {
+interface PromoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  menu: Menu | null
-  onSave: (formData: Omit<Menu, 'id'>) => void
+  promo: Promo | null
+  onSave: (formData: Omit<Promo, 'id'>) => void
   saving?: boolean
 }
 
-export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }: MenuDialogProps) {
-  const initialForm = menu
+export function PromoDialog({ open, onOpenChange, promo, onSave, saving = false }: PromoDialogProps) {
+  const initialForm = promo
     ? {
-      menu_name: menu.menu_name,
-      image: menu.image,
-      details: menu.details,
-      price: menu.price,
-      category: menu.category,
-      status: menu.status
+      promo_name: promo.promo_name,
+      image: promo.image,
+      status: promo.status
     }
     : {
-      menu_name: '',
+      promo_name: '',
       image: '',
-      details: '',
-      price: 0,
-      category: '',
       status: 'active' as const
     }
 
   const [formData, setFormData] = useState(initialForm)
   const [previewImage, setPreviewImage] = useState<string | null>(
-    typeof menu?.image === "string" ? menu.image : null
+    typeof promo?.image === "string" ? promo.image : null
   )
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -121,7 +113,7 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.menu_name.trim() || !formData.details.trim() || !formData.category.trim() || formData.price <= 0) {
+    if (!formData.promo_name.trim()) {
       alert('Harap lengkapi semua field yang diperlukan')
       return
     }
@@ -132,20 +124,29 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        key={menu ? menu.id : "new"}
+        key={promo ? promo.id : "new"}
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>{menu ? 'Edit Menu' : 'Tambah Menu Baru'}</DialogTitle>
+          <DialogTitle>{promo ? 'Edit Menu' : 'Tambah Menu Baru'}</DialogTitle>
           <DialogDescription>
-            {menu ? 'Ubah detail menu yang sudah ada' : 'Tambahkan menu baru ke dalam sistem'}
+            {promo ? 'Ubah detail menu yang sudah ada' : 'Tambahkan menu baru ke dalam sistem'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Upload Area */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nama Promo</label>
+            <Input
+              value={formData.promo_name}
+              onChange={(e) => setFormData({ ...formData, promo_name: e.target.value })}
+              placeholder="Masukkan nama promo"
+              required
+            />
+          </div>
+
           <div className="space-y-3">
-            <Label htmlFor="image">Gambar Menu</Label>
+            <Label htmlFor="image">Gambar Promo</Label>
 
             {!previewImage && (
               <div
@@ -210,77 +211,24 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
             )}
           </div>
 
-          {/* Form Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Nama Menu *</Label>
-              <Input
-                value={formData.menu_name}
-                onChange={(e) => setFormData({ ...formData, menu_name: e.target.value })}
-                placeholder='Masukkan nama menu'
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Harga *</Label>
-              <Input
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
-                placeholder='Masukkan harga'
-                required
-              />
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <Label>Detail Menu *</Label>
-            <textarea
-              value={formData.details}
-              onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-              className="w-full min-h-[100px] p-3 border rounded-lg"
-              placeholder='Masukkan detail menu'
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Kategori *</Label>
-              <Input
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder='Masukkan kategori'
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="w-full p-2 border rounded-lg"
-              >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-              </select>
-            </div>
+            <label className="text-sm font-medium">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="active">Aktif</option>
+              <option value="inactive">Nonaktif</option>
+            </select>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-
-            <Button
-              type="submit"
-              className="bg-orange-600 hover:bg-orange-700"
-              disabled={saving || isUploading}
-            >
-              {(saving || isUploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {menu ? 'Update Menu' : 'Tambah Menu'}
+            <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+              {promo ? 'Update Promo' : 'Tambah Promo'}
             </Button>
           </DialogFooter>
         </form>

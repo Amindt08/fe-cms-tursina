@@ -12,29 +12,33 @@ import {
 import Image from 'next/image'
 import { api_image_url } from '@/app/api/api'
 
-interface Menu {
+interface Promo {
   id: number
-  menu_name: string
+  promo_name: string
   image: string | File
-  details: string
-  price: number
-  category: string
   status: 'active' | 'inactive'
 }
 
-interface MenuTableProps {
-  menus: Menu[]
-  onEdit: (menu: Menu) => void
-  onDelete: (menu: Menu) => void
+interface PromoTableProps {
+  promos: Promo[]
+  onEdit: (promo: Promo) => void
+  onDelete: (promo: Promo) => void
   loading?: boolean
   error?: string | null
 }
 
-export function MenuTable({ menus, onEdit, onDelete, loading, error }: MenuTableProps) {
+export function PromoTable({ promos, onEdit, onDelete, loading, error }: PromoTableProps) {
+
+  function getSafeImageUrl(image: string | File) {
+    if (image instanceof File) return URL.createObjectURL(image)
+    if (typeof image === "string") return `${api_image_url}/promo/${image}`
+    return "/no-image.png"
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg border shadow-sm p-8 text-center">
-        <p>Memuat data menu...</p>
+        <p>Memuat data promo...</p>
       </div>
     )
   }
@@ -47,10 +51,10 @@ export function MenuTable({ menus, onEdit, onDelete, loading, error }: MenuTable
     )
   }
 
-  if (menus.length === 0) {
+  if (promos.length === 0) {
     return (
       <div className="bg-white rounded-lg border shadow-sm p-8 text-center">
-        <p>Tidak ada data menu yang ditemukan.</p>
+        <p>Tidak ada data promo ditemukan.</p>
       </div>
     )
   }
@@ -61,61 +65,58 @@ export function MenuTable({ menus, onEdit, onDelete, loading, error }: MenuTable
         <TableHeader>
           <TableRow>
             <TableHead>Gambar</TableHead>
-            <TableHead>Nama Menu</TableHead>
-            <TableHead>Detail</TableHead>
-            <TableHead>Harga</TableHead>
-            <TableHead>Kategori</TableHead>
+            <TableHead>Nama Promo</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
-          {menus.map((menu) => (
-            <TableRow key={menu.id}>
+          {promos.map((promo) => (
+            <TableRow key={promo.id}>
+              
+              {/* Gambar */}
               <TableCell>
-                <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                  {menu.image ? (
+                <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                  {promo.image ? (
                     <Image
-                      src={`${api_image_url}/menu/${menu.image}`}
-                      alt={menu.menu_name}
-                      className="w-12 h-12 rounded-lg object-cover"
+                      src={getSafeImageUrl(promo.image)}
+                      alt={promo.promo_name}
+                      className="w-12 h-12 object-cover rounded-lg"
                       width={40}
                       height={40}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none"
+                      }}
                     />
                   ) : (
                     <Eye className="h-6 w-6 text-gray-400" />
                   )}
                 </div>
               </TableCell>
-              <TableCell className="font-medium">{menu.menu_name}</TableCell>
-              <TableCell className="max-w-xs truncate">{menu.details}</TableCell>
-              <TableCell>Rp {menu.price.toLocaleString('id-ID')}</TableCell>
+
+              {/* Nama Promo */}
+              <TableCell className="font-medium">{promo.promo_name}</TableCell>
+
+              {/* Status */}
               <TableCell>
-                <Badge variant="outline">{menu.category}</Badge>
-              </TableCell>
-              <TableCell>
-                <Badge className={menu.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                  {menu.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                <Badge className={promo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                  {promo.status === 'active' ? 'Aktif' : 'Nonaktif'}
                 </Badge>
               </TableCell>
+
+              {/* Aksi */}
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(menu)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => onEdit(promo)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onDelete(menu)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => onDelete(promo)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>
+
             </TableRow>
           ))}
         </TableBody>
