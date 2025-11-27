@@ -60,21 +60,21 @@ export function PromoTable({ promos, onEdit, onDelete, loading, error }: PromoTa
   }
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm">
+    <div className="bg-white rounded-lg border shadow-sm px-4">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Gambar</TableHead>
-            <TableHead>Nama Promo</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Aksi</TableHead>
+            <TableHead className='font-semibold'>Gambar</TableHead>
+            <TableHead className='font-semibold'>Nama Promo</TableHead>
+            <TableHead className='font-semibold'>Status</TableHead>
+            <TableHead className="font-semibold">Aksi</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {promos.map((promo) => (
             <TableRow key={promo.id}>
-              
+
               {/* Gambar */}
               <TableCell>
                 <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
@@ -106,17 +106,24 @@ export function PromoTable({ promos, onEdit, onDelete, loading, error }: PromoTa
               </TableCell>
 
               {/* Aksi */}
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onEdit(promo)}>
+              <TableCell>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => onEdit(promo)}
+                    className='bg-amber-500 text-white hover:bg-amber-600 hover:text-white'
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onDelete(promo)}>
-                    <Trash2 className="h-4 w-4" />
+                  <Button
+                    size="sm"
+                    onClick={() => onDelete(promo)}
+                    className='bg-red-500 text-white hover:bg-red-600 hover:text-white'
+                  >
+                    <Trash2 className="h-4w-4" />
                   </Button>
                 </div>
               </TableCell>
-
             </TableRow>
           ))}
         </TableBody>

@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DeleteDialog } from './components/DeleteDialog'
 import { API_ENDPOINTS } from '@/app/api/api'
-import { toast } from 'sonner'
 import { PromoTable } from './components/PromoTable'
 import { PromoDialog } from './components/PromoDialog'
+import { toast } from 'sonner'
 
 interface Promo {
   id: number
@@ -63,11 +63,14 @@ export default function PromoPage() {
 
       const data: { success: boolean; data: Promo[] } = await response.json()
       setPromos(data.data)
-
     } catch (err: unknown) {
-      const message = getErrorMessage(err)
-      setError(message)
-      toast.error(message)
+      if (err instanceof Error) {
+        setError(err.message)
+        toast.error('Gagal memuat data promo')
+      } else {
+        setError("Terjadi kesalahan yang tidak diketahui")
+        toast.error('Terjadi kesalahan yang tidak diketahui')
+      }
     } finally {
       setLoading(false)
     }
@@ -79,10 +82,10 @@ export default function PromoPage() {
     return matchesSearch && matchesStatus
   })
 
-const statusOptions = [
-  "all",
-  ...Array.from(new Set(promos.map((p) => p.status))),
-] as Array<"all" | "active" | "inactive">;
+  const statusOptions = [
+    "all",
+    ...Array.from(new Set(promos.map((p) => p.status))),
+  ] as Array<"all" | "active" | "inactive">;
 
   const handleAdd = () => {
     setEditingPromo(null)
@@ -105,7 +108,7 @@ const statusOptions = [
 
       const data = new FormData()
       data.append('promo_name', formData.promo_name)
-      data.append('status', formData.status)
+      data.append('status', formData.status === 'active' ? 'active' : 'inactive')
 
       if (formData.image instanceof File) {
         data.append('image', formData.image)
@@ -118,6 +121,8 @@ const statusOptions = [
       let response: Response;
 
       if (editingPromo) {
+        data.append('_method', 'PUT')
+
         response = await fetch(API_ENDPOINTS.PROMO_BY_ID(editingPromo.id), {
           method: 'POST',
           body: data
@@ -128,15 +133,31 @@ const statusOptions = [
           body: data
         })
       }
-
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Gagal menyimpan data promo')
+        let errorMessage = 'Gagal menyimpan data promo'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch {
+          const errorText = await response.text()
+
+          errorMessage = errorText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
-      const result = await response.json()
+      let result
+      const contentType = response.headers.get('content-type')
 
-      if (result.success) {
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json()
+      } else {
+        const text = await response.text()
+        console.log('Response text:', text)
+        result = { success: true }
+      }
+
+      if (result.success !== false) {
         toast.success(editingPromo ? 'Promo berhasil diupdate' : 'Promo berhasil ditambahkan')
         await fetchPromos()
         setIsDialogOpen(false)
@@ -146,7 +167,11 @@ const statusOptions = [
       }
 
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err))
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menyimpan data')
+      }
     } finally {
       setSaving(false)
     }
@@ -180,7 +205,12 @@ const statusOptions = [
       }
 
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err))
+      console.error('Error deleting promo:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menghapus data')
+      }
     } finally {
       setLoading(false)
       setIsDeleteDialogOpen(false)
@@ -190,11 +220,11 @@ const statusOptions = [
 
   return (
     <div className="p-6 space-y-6">
-      
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Promo Tursina</h1>
-        <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
+        <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Promo
         </Button>
@@ -248,6 +278,7 @@ const statusOptions = [
 
       {/* Add/Edit Dialog */}
       <PromoDialog
+        key={editingPromo ? editingPromo.id : "new"}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         promo={editingPromo}

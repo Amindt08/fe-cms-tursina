@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
 import Image from 'next/image'
+import { api_image_url } from '@/app/api/api'
 
 interface Promo {
   id: number
@@ -48,8 +49,9 @@ export function PromoDialog({ open, onOpenChange, promo, onSave, saving = false 
 
   const [formData, setFormData] = useState(initialForm)
   const [previewImage, setPreviewImage] = useState<string | null>(
-    typeof promo?.image === "string" ? promo.image : null
-  )
+    typeof promo?.image === "string"
+      ? `${api_image_url}/promo/${promo.image}`
+      : null)
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -136,7 +138,7 @@ export function PromoDialog({ open, onOpenChange, promo, onSave, saving = false 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Nama Promo</label>
+            <Label htmlFor="image">Nama Promo</Label>
             <Input
               value={formData.promo_name}
               onChange={(e) => setFormData({ ...formData, promo_name: e.target.value })}
@@ -212,7 +214,7 @@ export function PromoDialog({ open, onOpenChange, promo, onSave, saving = false 
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
+            <Label htmlFor="image">Status</Label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
@@ -224,10 +226,16 @@ export function PromoDialog({ open, onOpenChange, promo, onSave, saving = false 
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" onClick={() => onOpenChange(false)} className='bg-gray-600 hover:bg-gray-700 text-white hover:text-white'>
               Batal
             </Button>
-            <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+
+            <Button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={saving || isUploading}
+            >
+              {(saving || isUploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {promo ? 'Update Promo' : 'Tambah Promo'}
             </Button>
           </DialogFooter>
