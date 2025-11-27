@@ -1,39 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import Image from 'next/image'
 import { API_ENDPOINTS } from '@/app/api/api'
+import { toast } from 'sonner'
+import { KarirTable } from './components/KarirTable'
+import KarirDialog from './components/KarirDialog'
+import DeleteDialog from './components/DeleteDialog'
 
 interface Career {
   id: number
-  image: string
+  image: string | File
   description: string
-}
-
-interface CareerDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  career: Career | null
-  onSave: (formData: Omit<Career, 'id'>) => void
 }
 
 export default function CareerPage() {
@@ -45,38 +25,38 @@ export default function CareerPage() {
   const [careerToDelete, setCareerToDelete] = useState<Career | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<boolean>(false)
 
-  // useEffect(() => {
-  //   const fetchCareers = async () => {
-  //     try{
-  //       setLoading(true)
-  //       setError(null)
+  useEffect(() => {
+    fetchCareers()
+  }, [])
 
-  //       const response = await fetch(API_ENDPOINTS.CAREER)
+  const fetchCareers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-  //       if (!response.ok) {
-  //         throw new Error('Gagal mengambil data karir')
-  //       }
+      const response = await fetch(API_ENDPOINTS.CAREER)
 
-  //       const data: { success: boolean; data: Career[] } = await response.json()
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data karir')
+      }
 
-  //       setCareers(data.data)
+      const data: { success: boolean; data: Career[] } = await response.json()
+      setCareers(data.data)
 
-  //     } catch (err: unknown) {
-  //       if (err instanceof Error) {
-  //         setError(err.message)
-  //       } else {
-  //         setError("Terjadi kesalahan yang tidak diketahui")
-  //       } 
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-  // })
-
-  // useEffect(() => {
-  //   fetchCareers()
-  // }, [])
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+        toast.error('Gagal memuat data karir')
+      } else {
+        setError("Terjadi kesalahan yang tidak diketahui")
+        toast.error('Terjadi kesalahan yang tidak diketahui')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Filter careers based on search
   const filteredCareers = careers.filter(career =>
@@ -98,30 +78,105 @@ export default function CareerPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
-    if (careerToDelete) {
-      setCareers(careers.filter(career => career.id !== careerToDelete.id))
+  const handleSave = async (formData: Omit<Career, 'id'>) => {
+    try {
+      setSaving(true)
+
+      const data = new FormData()
+
+      data.append('description', formData.description)
+
+      if (formData.image instanceof File) {
+        data.append('image', formData.image)
+      }
+
+      if (typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
+        data.append('old_image', formData.image)
+      }
+
+      let response: Response;
+
+      if (editingCareer) {
+        data.append('_method', 'PUT')
+
+        response = await fetch(API_ENDPOINTS.CAREER_BY_ID(editingCareer.id), {
+          method: 'POST',
+          body: data,
+        })
+      } else {
+        response = await fetch(API_ENDPOINTS.CAREER, {
+          method: 'POST',
+          body: data,
+        })
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menyimpan data karir')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(editingCareer ? 'Karir berhasil diupdate' : 'Karir berhasil ditambahkan')
+        await fetchCareers()
+        setIsDialogOpen(false)
+        setEditingCareer(null)
+      } else {
+        throw new Error(result.message || 'Gagal menyimpan data karir')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error saving karir:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menyimpan data')
+      }
+    } finally {
+      setSaving(false)
     }
-    setIsDeleteDialogOpen(false)
-    setCareerToDelete(null)
   }
 
-  const handleSave = (formData: Omit<Career, 'id'>) => {
-    if (editingCareer) {
-      // Update existing career
-      setCareers(careers.map(career =>
-        career.id === editingCareer.id ? { ...career, ...formData } : career
-      ))
-    } else {
-      // Add new career
-      const newCareer: Career = {
-        id: Math.max(...careers.map(c => c.id)) + 1,
-        ...formData
+  const confirmDelete = async () => {
+    if (!careerToDelete) return
+
+    try {
+      setLoading(true)
+
+      const response = await fetch(API_ENDPOINTS.CAREER_BY_ID(careerToDelete.id), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menghapus menu')
       }
-      setCareers([...careers, newCareer])
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('Menu berhasil dihapus')
+        await fetchCareers()
+      } else {
+        throw new Error(result.message || 'Gagal menghapus menu')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error deleting menu:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menghapus data')
+      }
+    } finally {
+      setLoading(false)
+      setIsDeleteDialogOpen(false)
+      setCareerToDelete(null)
     }
-    setIsDialogOpen(false)
-    setEditingCareer(null)
   }
 
   return (
@@ -131,7 +186,7 @@ export default function CareerPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manajemen Karir</h1>
         </div>
-        <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
+        <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Lowongan
         </Button>
@@ -151,171 +206,32 @@ export default function CareerPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Gambar</TableHead>
-              <TableHead>Deskripsi Lowongan</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCareers.map((career) => (
-              <TableRow key={career.id}>
-                <TableCell>
-                  <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                    {career.image ? (
-                      <Image
-                        src={career.image}
-                        alt="Lowongan karir"
-                        className="w-20 h-20 rounded-lg object-cover"
-                        width={40}
-                        height={40}
-                      />
-                    ) : (
-                      <Eye className="h-6 w-6 text-gray-400" />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="max-w-2xl">
-                    <p className="text-gray-900 whitespace-pre-wrap">{career.description}</p>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(career)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(career)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <KarirTable
+        careers={filteredCareers}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        loading={loading}
+        error={error}
+      />
 
       {/* Add/Edit Dialog */}
-      <CareerDialog
+      <KarirDialog
+        key={editingCareer ? editingCareer.id : "new"}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         career={editingCareer}
         onSave={handleSave}
+        saving={saving}
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Lowongan</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus lowongan karir ini?
-              Tindakan ini tidak dapat dibatalkan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        career={careerToDelete}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
     </div>
-  )
-}
-
-// Dialog Component for Add/Edit
-function CareerDialog({ open, onOpenChange, career, onSave }: CareerDialogProps) {
-  const [formData, setFormData] = useState({
-    image: career?.image || '',
-    description: career?.description || ''
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(formData)
-    setFormData({
-      image: '',
-      description: ''
-    })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{career ? 'Edit Lowongan' : 'Tambah Lowongan Baru'}</DialogTitle>
-          <DialogDescription>
-            {career ? 'Ubah detail lowongan yang sudah ada' : 'Tambahkan lowongan baru ke dalam sistem'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">URL Gambar</label>
-            <Input
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="https://example.com/image.jpg"
-            />
-            {formData.image && (
-              <div className="mt-2">
-                <p className="text-sm text-gray-600 mb-2">Preview:</p>
-                <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <Image
-                    src={formData.image}
-                    alt="Preview"
-                    className="w-32 h-32 rounded-lg object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                    width={40}
-                    height={40}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Deskripsi Lowongan</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Masukkan deskripsi lengkap tentang lowongan karir..."
-              className="w-full min-h-[150px] p-3 border border-gray-300 rounded-lg resize-none"
-              required
-            />
-            <p className="text-xs text-gray-500">
-              Jelaskan secara detail tentang posisi, kualifikasi, dan benefit yang ditawarkan
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
-              {career ? 'Update Lowongan' : 'Tambah Lowongan'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
