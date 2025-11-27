@@ -1,17 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Edit, Trash2, MapPin, ExternalLink } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -21,19 +13,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { API_ENDPOINTS } from '@/app/api/api'
+import { toast } from 'sonner'
+import OutletTable from './components/OutletTable'
+import { OutletDialog } from './components/OutletDialog'
+import { DeleteDialog } from './components/DeleteDialog'
 
-// Type definitions
 interface Outlet {
   id: number
   location: string
   link: string
-}
-
-interface OutletDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  outlet: Outlet | null
-  onSave: (formData: Omit<Outlet, 'id'>) => void
 }
 
 export default function OutletPage() {
@@ -45,8 +33,13 @@ export default function OutletPage() {
   const [outletToDelete, setOutletToDelete] = useState<Outlet | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<boolean>(false)
 
-  // Fetch data dari backend
+
+  useEffect(() => {
+    fetchOutlets()
+  }, [])
+
   const fetchOutlets = async () => {
     try {
       setLoading(true)
@@ -58,126 +51,20 @@ export default function OutletPage() {
         throw new Error('Gagal mengambil data outlet')
       }
 
-      const data = await response.json()
-
-      // Validasi response structure
-      if (data.success && Array.isArray(data.data)) {
-        setOutlets(data.data)
-      } else {
-        throw new Error('Format data tidak valid')
-      }
+      const data: { success: boolean; data: Outlet[] } = await response.json()
+      setOutlets(data.data)
 
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message)
+        toast.error('Gagal memuat data outlet')
       } else {
         setError("Terjadi kesalahan yang tidak diketahui")
+        toast.error('Terjadi kesalahan yang tidak diketahui')
       }
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    fetchOutlets()
-  }, [])
-
-  // Create outlet baru
-  const createOutlet = async (formData: Omit<Outlet, 'id'>) => {
-    try {
-      const response = await fetch(API_ENDPOINTS.OUTLET, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchOutlets() // Refresh data
-        return true
-      } else {
-        throw new Error(data.message || 'Gagal membuat outlet')
-      }
-    } catch (error) {
-      console.error('Create outlet error:', error)
-      return false
-    }
-  }
-
-  // Update outlet
-  const updateOutlet = async (id: number, formData: Omit<Outlet, 'id'>) => {
-    try {
-      const response = await fetch(API_ENDPOINTS.OUTLET_BY_ID(id), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchOutlets() // Refresh data
-        return true
-      } else {
-        throw new Error(data.message || 'Gagal update outlet')
-      }
-    } catch (error) {
-      console.error('Update outlet error:', error)
-      return false
-    }
-  }
-
-  // Delete outlet
-  const deleteOutlet = async (id: number) => {
-    try {
-      const response = await fetch(API_ENDPOINTS.OUTLET_BY_ID(id), {
-        method: 'DELETE'
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchOutlets() // Refresh data
-        return true
-      } else {
-        throw new Error(data.message || 'Gagal menghapus outlet')
-      }
-    } catch (error) {
-      console.error('Delete outlet error:', error)
-      return false
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat data outlet...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600 font-medium">Error: {error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 bg-red-600 hover:bg-red-700"
-          >
-            Coba Lagi
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   // Filter outlets based on search
@@ -200,44 +87,109 @@ export default function OutletPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDelete = async () => {
-    if (outletToDelete) {
-      const success = await deleteOutlet(outletToDelete.id)
-      if (!success) {
-        setError('Gagal menghapus outlet')
-      }
-    }
-    setIsDeleteDialogOpen(false)
-    setOutletToDelete(null)
-  }
-
   const handleSave = async (formData: Omit<Outlet, 'id'>) => {
-    let success = false
+    try {
+      setSaving(true)
 
-    if (editingOutlet) {
-      // Update existing outlet
-      success = await updateOutlet(editingOutlet.id, formData)
-    } else {
-      // Add new outlet
-      success = await createOutlet(formData)
-    }
+      const data = new FormData()
 
-    if (success) {
-      setIsDialogOpen(false)
-      setEditingOutlet(null)
-    } else {
-      setError(editingOutlet ? 'Gagal update outlet' : 'Gagal membuat outlet')
+      data.append('location', formData.location)
+      data.append('link', formData.link)
+
+      let response: Response;
+
+      if (editingOutlet) {
+        data.append('_method', 'PUT')
+
+        response = await fetch(API_ENDPOINTS.OUTLET_BY_ID(editingOutlet.id), {
+          method: 'POST',
+          body: data,
+        })
+      } else {
+        response = await fetch(API_ENDPOINTS.OUTLET, {
+          method: 'POST',
+          body: data,
+        })
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menyimpan data outlet')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(editingOutlet ? 'Outlet berhasil diupdate' : 'Outlet berhasil ditambahkan')
+        await fetchOutlets()
+        setIsDialogOpen(false)
+        setEditingOutlet(null)
+      } else {
+        throw new Error(result.message || 'Gagal menyimpan data outlet')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error saving outlet:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menyimpan data')
+      }
+    } finally {
+      setSaving(false)
     }
   }
+
+  const confirmDelete = async () => {
+    if (!outletToDelete) return
+
+    try {
+      setLoading(true)
+
+      const response = await fetch(API_ENDPOINTS.OUTLET_BY_ID(outletToDelete.id), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menghapus outlet')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('Outlet berhasil dihapus')
+        await fetchOutlets()
+      } else {
+        throw new Error(result.message || 'Gagal menghapus outlet')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error deleting outlet:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menghapus outlet')
+      }
+    } finally {
+      setLoading(false)
+      setIsDeleteDialogOpen(false)
+      setOutletToDelete(null)
+    }
+  }
+
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Outlet</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Outlet</h1>
         </div>
-        <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
+        <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Outlet
         </Button>
@@ -257,162 +209,33 @@ export default function OutletPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Lokasi Outlet</TableHead>
-              <TableHead>Link Maps</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredOutlets.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                  {outlets.length === 0 ? 'Tidak ada data outlet' : 'Tidak ada outlet yang sesuai dengan pencarian'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredOutlets.map((outlet) => (
-                <TableRow key={outlet.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <MapPin className="h-5 w-5 text-orange-600" />
-                      <span className="font-medium">{outlet.location}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <a
-                      href={outlet.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Buka di Google Maps
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(outlet)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(outlet)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <OutletTable
+        outlets={filteredOutlets}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        loading={loading}
+        error={error}
+      />
 
       {/* Add/Edit Dialog */}
       <OutletDialog
+        key={editingOutlet ? editingOutlet.id : "new"}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         outlet={editingOutlet}
         onSave={handleSave}
+        saving={saving}
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Outlet</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus outlet {outletToDelete?.location}?
-              Tindakan ini tidak dapat dibatalkan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        outlet={outletToDelete}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
     </div>
   )
 }
 
-// Dialog Component for Add/Edit
-function OutletDialog({ open, onOpenChange, outlet, onSave }: OutletDialogProps) {
-  const [formData, setFormData] = useState({
-    location: outlet?.location || '',
-    link: outlet?.link || ''
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(formData)
-    // Reset form hanya jika bukan edit mode
-    if (!outlet) {
-      setFormData({
-        location: '',
-        link: ''
-      })
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{outlet ? 'Edit Outlet' : 'Tambah Outlet Baru'}</DialogTitle>
-          <DialogDescription>
-            {outlet ? 'Ubah detail outlet yang sudah ada' : 'Tambahkan outlet baru ke dalam sistem'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Lokasi Outlet</label>
-            <Input
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Contoh: Tursina Kebab Cabang Margonda"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Link Google Maps</label>
-            <Input
-              value={formData.link}
-              onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-              placeholder="https://maps.google.com/maps?q=..."
-              required
-            />
-            <p className="text-xs text-gray-500">
-              Masukkan link Google Maps lengkap untuk lokasi outlet
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
-              {outlet ? 'Update Outlet' : 'Tambah Outlet'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
