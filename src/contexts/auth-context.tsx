@@ -23,15 +23,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Auto check session on load (sessionStorage = auto logout on close)
   useEffect(() => {
     const checkAuth = () => {
       try {
-        const storedUser = localStorage.getItem('tursina-user')
-        const token = localStorage.getItem('tursina-token')
+        const storedUser = sessionStorage.getItem('tursina-user')
+        const token = sessionStorage.getItem('tursina-token')
 
-        if (storedUser && token) {
-          setUser(JSON.parse(storedUser))
+        if (!storedUser || !token) {
+          setUser(null)
+          return
         }
+
+        setUser(JSON.parse(storedUser))
       } catch (error) {
         console.error('Error checking auth:', error)
       } finally {
@@ -52,10 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          password
-        })
+        body: JSON.stringify({ email, password })
       })
 
       const data = await response.json()
@@ -68,9 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: data.data.role
         }
 
+        // Simpan user & token dalam sessionStorage
         setUser(userData)
-        localStorage.setItem('tursina-user', JSON.stringify(userData))
-        localStorage.setItem('tursina-token', data.data.token || data.data.access_token)
+        sessionStorage.setItem('tursina-user', JSON.stringify(userData))
+        sessionStorage.setItem(
+          'tursina-token',
+          data.data.token || data.data.access_token
+        )
+
         return true
       } else {
         console.error('Login failed:', data.message)
@@ -86,8 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('tursina-user')
-    localStorage.removeItem('tursina-token')
+    sessionStorage.removeItem('tursina-user')
+    sessionStorage.removeItem('tursina-token')
   }
 
   const value = {
