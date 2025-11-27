@@ -1,5 +1,6 @@
 import { AppLayout } from "@/layout/AppLayout"
 import { AppSidebarProvider } from "@/providers/sidebar-provider"
+import { Toaster } from "sonner"
 
 export default function GaleriTursinaLayout({
   children,
@@ -9,6 +10,7 @@ export default function GaleriTursinaLayout({
   return (
     <AppSidebarProvider>
       <AppLayout>
+        <Toaster richColors position="top-right" />
         {children}
       </AppLayout>
     </AppSidebarProvider>

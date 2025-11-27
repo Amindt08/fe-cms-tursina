@@ -1,93 +1,71 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Search, Edit, Trash2, Eye, Filter } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, Search, Filter } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import Image from 'next/image'
+import { API_ENDPOINTS } from '@/app/api/api'
+import { toast } from 'sonner'
+import { GaleriTable } from './components/GaleriTable'
+import { GaleriDialog } from './components/GaleriDialog'
+import { DeleteDialog } from './components/DeleteDialog'
 
-// Type definitions
 interface Gallery {
   id: number
   category: string
-  image: string
+  image: string | File
   description: string
 }
 
-interface GalleryDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  gallery: Gallery | null
-  onSave: (formData: Omit<Gallery, 'id'>) => void
-}
-
-// Mock data
-const galleryData: Gallery[] = [
-  {
-    id: 1,
-    category: "Makanan",
-    image: "/images/gallery-food-1.jpg",
-    description: "Kebab Regular dengan saus spesial Tursina"
-  },
-  {
-    id: 2,
-    category: "Makanan",
-    image: "/images/gallery-food-2.jpg",
-    description: "Kebab Jumbo dengan extra keju dan daging"
-  },
-  {
-    id: 3,
-    category: "Outlet",
-    image: "/images/gallery-outlet-1.jpg",
-    description: "Interior modern outlet Tursina Kebab Margonda"
-  },
-  {
-    id: 4,
-    category: "Acara",
-    image: "/images/gallery-event-1.jpg",
-    description: "Grand opening cabang baru Tursina Kebab"
-  },
-  {
-    id: 5,
-    category: "Tim",
-    image: "/images/gallery-team-1.jpg",
-    description: "Tim profesional Tursina Kebab siap melayani"
-  }
-]
-
 export default function GalleryPage() {
-  const [galleries, setGalleries] = useState<Gallery[]>(galleryData)
+  const [galleries, setGalleries] = useState<Gallery[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingGallery, setEditingGallery] = useState<Gallery | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [galleryToDelete, setGalleryToDelete] = useState<Gallery | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<boolean>(false)
 
-  // Filter galleries based on search and category
+  useEffect(() => {
+    fetchGalleries()
+  }, [])
+
+  const fetchGalleries = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch(API_ENDPOINTS.GALERI)
+
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data galeri')
+      }
+
+      const data: { success: boolean; data: Gallery[] } = await response.json()
+      setGalleries(data.data)
+
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+        toast.error('Gagal memuat data galeri')
+      } else {
+        setError("Terjadi kesalahan yang tidak diketahui")
+        toast.error('Terjadi kesalahan yang tidak diketahui')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredGalleries = galleries.filter(gallery => {
     const matchesSearch = gallery.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       gallery.category.toLowerCase().includes(searchTerm.toLowerCase())
@@ -112,30 +90,106 @@ export default function GalleryPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
-    if (galleryToDelete) {
-      setGalleries(galleries.filter(gallery => gallery.id !== galleryToDelete.id))
+  const handleSave = async (formData: Omit<Gallery, 'id'>) => {
+    try {
+      setSaving(true)
+
+      const data = new FormData()
+
+      data.append('category', formData.category)
+      data.append('description', formData.description)
+
+      if (formData.image instanceof File) {
+        data.append('image', formData.image)
+      }
+
+      if (typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
+        data.append('old_image', formData.image)
+      }
+
+      let response: Response;
+
+      if (editingGallery) {
+        data.append('_method', 'PUT')
+
+        response = await fetch(API_ENDPOINTS.GALERI_BY_ID(editingGallery.id), {
+          method: 'POST',
+          body: data,
+        })
+      } else {
+        response = await fetch(API_ENDPOINTS.GALERI, {
+          method: 'POST',
+          body: data,
+        })
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menyimpan data galeri')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(editingGallery ? 'Galeri berhasil diupdate' : 'Galeri berhasil ditambahkan')
+        await fetchGalleries()
+        setIsDialogOpen(false)
+        setEditingGallery(null)
+      } else {
+        throw new Error(result.message || 'Gagal menyimpan data galeri')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error saving galeri:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menyimpan data')
+      }
+    } finally {
+      setSaving(false)
     }
-    setIsDeleteDialogOpen(false)
-    setGalleryToDelete(null)
   }
 
-  const handleSave = (formData: Omit<Gallery, 'id'>) => {
-    if (editingGallery) {
-      // Update existing gallery
-      setGalleries(galleries.map(gallery =>
-        gallery.id === editingGallery.id ? { ...gallery, ...formData } : gallery
-      ))
-    } else {
-      // Add new gallery
-      const newGallery: Gallery = {
-        id: Math.max(...galleries.map(g => g.id)) + 1,
-        ...formData
+  const confirmDelete = async () => {
+    if (!galleryToDelete) return
+
+    try {
+      setLoading(true)
+
+      const response = await fetch(API_ENDPOINTS.GALERI_BY_ID(galleryToDelete.id), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Gagal menghapus galeri')
       }
-      setGalleries([...galleries, newGallery])
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('Galeri berhasil dihapus')
+        await fetchGalleries()
+      } else {
+        throw new Error(result.message || 'Gagal menghapus galeri')
+      }
+
+    } catch (err: unknown) {
+      console.error('Error deleting galeri:', err)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Terjadi kesalahan saat menghapus galeri')
+      }
+    } finally {
+      setLoading(false)
+      setIsDeleteDialogOpen(false)
+      setGalleryToDelete(null)
     }
-    setIsDialogOpen(false)
-    setEditingGallery(null)
   }
 
   return (
@@ -145,7 +199,7 @@ export default function GalleryPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manajemen Galeri</h1>
         </div>
-        <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
+        <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Foto
         </Button>
@@ -185,198 +239,32 @@ export default function GalleryPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Gambar</TableHead>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Deskripsi</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredGalleries.map((gallery) => (
-              <TableRow key={gallery.id}>
-                <TableCell>
-                  <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                    {gallery.image ? (
-                      <Image
-                        src={gallery.image}
-                        alt={gallery.description}
-                        className="w-20 h-20 object-cover"
-                        width={40}
-                        height={40}
-                      />
-                    ) : (
-                      <Eye className="h-6 w-6 text-gray-400" />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {gallery.category}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-md">
-                  <p className="text-gray-900 line-clamp-2">{gallery.description}</p>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(gallery)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(gallery)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <GaleriTable
+        galleries={filteredGalleries}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        loading={loading}
+        error={error}
+      />
 
       {/* Add/Edit Dialog */}
-      <GalleryDialog
+      <GaleriDialog
+        key={editingGallery ? editingGallery.id : "new"}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         gallery={editingGallery}
         onSave={handleSave}
+        saving={saving}
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Foto</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus foto {galleryToDelete?.description}?
-              Tindakan ini tidak dapat dibatalkan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        gallery={galleryToDelete}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
     </div>
-  )
-}
-
-// Dialog Component for Add/Edit
-function GalleryDialog({ open, onOpenChange, gallery, onSave }: GalleryDialogProps) {
-  const [formData, setFormData] = useState({
-    category: gallery?.category || '',
-    image: gallery?.image || '',
-    description: gallery?.description || ''
-  })
-
-  const categories = ['Makanan', 'Outlet', 'Acara', 'Tim', 'Lainnya']
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(formData)
-    setFormData({
-      category: '',
-      image: '',
-      description: ''
-    })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{gallery ? 'Edit Foto' : 'Tambah Foto Baru'}</DialogTitle>
-          <DialogDescription>
-            {gallery ? 'Ubah detail foto yang sudah ada' : 'Tambahkan foto baru ke galeri'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Kategori</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-                required
-              >
-                <option value="">Pilih Kategori</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">URL Gambar</label>
-              <Input
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-                required
-              />
-            </div>
-          </div>
-
-          {formData.image && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Preview Gambar</label>
-              <div className="w-40 h-40 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                <Image
-                  src={formData.image}
-                  alt="Preview"
-                  className="w-40 h-40 object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                  width={40}
-                  height={40}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Deskripsi Foto</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Masukkan deskripsi foto..."
-              className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg resize-none"
-              required
-            />
-            <p className="text-xs text-gray-500">
-              Jelaskan secara singkat tentang foto yang diupload
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
-              {gallery ? 'Update Foto' : 'Tambah Foto'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
