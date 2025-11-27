@@ -10,7 +10,7 @@ export default function MenuTursinaLayout({
     return (
         <AppSidebarProvider>
             <AppLayout>
-                <Toaster position="top-right" />
+                <Toaster richColors position="top-right" />
                 {children}
             </AppLayout>
         </AppSidebarProvider>

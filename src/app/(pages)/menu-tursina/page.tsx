@@ -38,7 +38,6 @@ export default function MenuPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<boolean>(false)
 
-  // Fetch data dari API
   useEffect(() => {
     fetchMenus()
   }, [])
@@ -70,7 +69,6 @@ export default function MenuPage() {
     }
   }
 
-  // Filter menus based on search and category
   const filteredMenus = menus.filter(menu => {
     const matchesSearch = menu.menu_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       menu.details.toLowerCase().includes(searchTerm.toLowerCase())
@@ -118,8 +116,10 @@ export default function MenuPage() {
       let response: Response;
 
       if (editingMenu) {
+        data.append('_method', 'PUT')
+
         response = await fetch(API_ENDPOINTS.MENU_BY_ID(editingMenu.id), {
-          method: 'POST', 
+          method: 'POST',
           body: data,
         })
       } else {
@@ -130,13 +130,30 @@ export default function MenuPage() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Gagal menyimpan data menu')
+        let errorMessage = 'Gagal menyimpan data menu'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch {
+          const errorText = await response.text()
+          
+          errorMessage = errorText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
-      const result = await response.json()
+      let result
+      const contentType = response.headers.get('content-type')
+      
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json()
+      } else {
+        const text = await response.text()
+        console.log('Response text:', text)
+        result = { success: true }
+      }
 
-      if (result.success) {
+      if (result.success !== false) {
         toast.success(editingMenu ? 'Menu berhasil diupdate' : 'Menu berhasil ditambahkan')
         await fetchMenus()
         setIsDialogOpen(false)
@@ -179,7 +196,7 @@ export default function MenuPage() {
 
       if (result.success) {
         toast.success('Menu berhasil dihapus')
-        await fetchMenus() 
+        await fetchMenus()
       } else {
         throw new Error(result.message || 'Gagal menghapus menu')
       }
@@ -205,7 +222,7 @@ export default function MenuPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Menu Tursina</h1>
         </div>
-        <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700">
+        <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Menu
         </Button>
@@ -255,12 +272,14 @@ export default function MenuPage() {
 
       {/* Add/Edit Dialog */}
       <MenuDialog
+        key={editingMenu ? editingMenu.id : "new"}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         menu={editingMenu}
         onSave={handleSave}
         saving={saving}
       />
+
 
       {/* Delete Confirmation Dialog */}
       <DeleteDialog

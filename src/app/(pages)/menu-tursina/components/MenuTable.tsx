@@ -56,17 +56,17 @@ export function MenuTable({ menus, onEdit, onDelete, loading, error }: MenuTable
   }
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm">
+    <div className="bg-white rounded-lg border shadow-sm px-4">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Gambar</TableHead>
-            <TableHead>Nama Menu</TableHead>
-            <TableHead>Detail</TableHead>
-            <TableHead>Harga</TableHead>
-            <TableHead>Kategori</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Aksi</TableHead>
+            <TableHead className='font-semibold'>Gambar</TableHead>
+            <TableHead className='font-semibold'>Nama Menu</TableHead>
+            <TableHead className='font-semibold'>Detail</TableHead>
+            <TableHead className='font-semibold'>Harga</TableHead>
+            <TableHead className='font-semibold'>Kategori</TableHead>
+            <TableHead className='font-semibold'>Status</TableHead>
+            <TableHead className='font-semibold'>Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -90,29 +90,27 @@ export function MenuTable({ menus, onEdit, onDelete, loading, error }: MenuTable
               <TableCell className="font-medium">{menu.menu_name}</TableCell>
               <TableCell className="max-w-xs truncate">{menu.details}</TableCell>
               <TableCell>Rp {menu.price.toLocaleString('id-ID')}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{menu.category}</Badge>
-              </TableCell>
+              <TableCell>{menu.category}</TableCell>
               <TableCell>
                 <Badge className={menu.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
                   {menu.status === 'active' ? 'Aktif' : 'Nonaktif'}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
+              <TableCell>
+                <div className="flex gap-2">
                   <Button
-                    variant="outline"
                     size="sm"
                     onClick={() => onEdit(menu)}
+                    className='bg-amber-500 text-white hover:bg-amber-600 hover:text-white'
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
                     onClick={() => onDelete(menu)}
+                    className='bg-red-500 text-white hover:bg-red-600 hover:text-white'
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4w-4" />
                   </Button>
                 </div>
               </TableCell>

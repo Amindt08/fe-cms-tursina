@@ -16,6 +16,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
+import { api_image_url } from '@/app/api/api'
 
 interface Menu {
   id: number
@@ -36,14 +37,14 @@ interface MenuDialogProps {
 }
 
 export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }: MenuDialogProps) {
-  const initialForm = menu
+  const initialForm: Omit<Menu, "id"> = menu
     ? {
       menu_name: menu.menu_name,
       image: menu.image,
       details: menu.details,
       price: menu.price,
       category: menu.category,
-      status: menu.status
+      status: menu.status,
     }
     : {
       menu_name: '',
@@ -51,12 +52,14 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
       details: '',
       price: 0,
       category: '',
-      status: 'active' as const
+      status: 'active'
     }
 
-  const [formData, setFormData] = useState(initialForm)
+  const [formData, setFormData] = useState<Omit<Menu, "id">>(initialForm)
   const [previewImage, setPreviewImage] = useState<string | null>(
-    typeof menu?.image === "string" ? menu.image : null
+    typeof menu?.image === "string"
+      ? `${api_image_url}/menu/${menu.image}`
+      : null
   )
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -221,13 +224,20 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label>Harga *</Label>
               <Input
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                type="text"
+                inputMode="numeric"
+                value={formData.price === 0 ? '' : `Rp ${formData.price.toLocaleString('id-ID')}`}
+                onChange={(e) => {
+                  // Hapus semua karakter non-digit
+                  const numericValue = e.target.value.replace(/\D/g, '');
+                  setFormData({
+                    ...formData,
+                    price: numericValue === '' ? 0 : parseInt(numericValue)
+                  });
+                }}
                 placeholder='Masukkan harga'
                 required
               />
@@ -248,12 +258,21 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Kategori *</Label>
-              <Input
+              <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder='Masukkan kategori'
+                className="w-full p-2 border rounded-lg"
                 required
-              />
+              >
+                <option value="">Pilih kategori</option>
+                <option value="Paket Bundling">Paket Bundling</option>
+                <option value="Unggulan">Unggulan</option>
+                <option value="Kebab">Kebab</option>
+                <option value="Burger">Burger</option>
+                <option value="Maryam">Maryam</option>
+                <option value="Minuman">Minuman</option>
+                <option value="Topping">Topping</option>
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -270,13 +289,13 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" onClick={() => onOpenChange(false)} className='bg-gray-600 hover:bg-gray-700 text-white hover:text-white'>
               Batal
             </Button>
 
             <Button
               type="submit"
-              className="bg-orange-600 hover:bg-orange-700"
+              className="bg-blue-600 hover:bg-blue-700"
               disabled={saving || isUploading}
             >
               {(saving || isUploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -285,6 +304,6 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog>///
   )
 }
