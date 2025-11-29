@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
 import { api_image_url } from '@/app/api/api'
+import Image from 'next/image'
 
 interface Menu {
   id: number
@@ -202,7 +203,7 @@ export function MenuDialog({ open, onOpenChange, menu, onSave, saving = false }:
 
                 <div className="flex justify-center">
                   <div className="w-32 h-32 rounded-lg overflow-hidden border">
-                    <img src={previewImage} className="w-full h-full object-cover" />
+                    <Image src={previewImage} alt='Gambar Menu' className="w-full h-full object-cover" width={40} height={40}/>
                   </div>
                 </div>
 

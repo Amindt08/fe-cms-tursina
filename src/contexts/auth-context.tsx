@@ -1,119 +1,126 @@
-'use client'
+"use client";
 
-import { API_ENDPOINTS } from '@/app/api/api'
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { API_ENDPOINTS } from "@/app/api/api";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 interface User {
-  id: string
-  name: string
-  email: string
-  role: string
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 interface AuthContextType {
-  user: User | null
-  login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
-  isLoading: boolean
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Auto check session on load (sessionStorage = auto logout on close)
+  // Load session on first render
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const storedUser = sessionStorage.getItem('tursina-user')
-        const token = sessionStorage.getItem('tursina-token')
+    try {
+      const storedUser = sessionStorage.getItem("tursina-user");
+      const token = sessionStorage.getItem("tursina-token");
 
-        if (!storedUser || !token) {
-          setUser(null)
-          return
-        }
-
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error('Error checking auth:', error)
-      } finally {
-        setIsLoading(false)
+      if (storedUser && token) {
+        setUser(JSON.parse(storedUser));
       }
+    } catch (error) {
+      console.error("Error loading session:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    checkAuth()
-  }, [])
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       const response = await fetch(API_ENDPOINTS.LOGIN, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify({ email, password })
-      })
+        body: JSON.stringify({ email, password }),
+      });
 
-      const data = await response.json()
+      const json = await response.json();
 
-      if (data.success && data.data) {
-        const userData: User = {
-          id: data.data.id.toString(),
-          name: data.data.name,
-          email: data.data.email,
-          role: data.data.role
-        }
-
-        // Simpan user & token dalam sessionStorage
-        setUser(userData)
-        sessionStorage.setItem('tursina-user', JSON.stringify(userData))
-        sessionStorage.setItem(
-          'tursina-token',
-          data.data.token || data.data.access_token
-        )
-
-        return true
-      } else {
-        console.error('Login failed:', data.message)
-        return false
+      if (!response.ok) {
+        console.error("Login failed:", json.message || "Unknown error");
+        return false;
       }
+
+      if (!json.success || !json.data) {
+        console.error("Login invalid structure:", json);
+        return false;
+      }
+
+      const token =
+        json.data.token || json.data.access_token || json.token || null;
+
+      if (!token) {
+        console.error("Token not found in response:", json);
+        return false;
+      }
+
+      const userData: User = {
+        id: json.data.id.toString(),
+        name: json.data.name,
+        email: json.data.email,
+        role: json.data.role,
+      };
+
+      setUser(userData);
+
+      sessionStorage.setItem("tursina-user", JSON.stringify(userData));
+      sessionStorage.setItem("tursina-token", token);
+
+      return true;
     } catch (error) {
-      console.error('Login error:', error)
-      return false
+      console.error("Login error:", error);
+      return false;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const logout = () => {
-    setUser(null)
-    sessionStorage.removeItem('tursina-user')
-    sessionStorage.removeItem('tursina-token')
-  }
+    setUser(null);
+    sessionStorage.removeItem("tursina-user");
+    sessionStorage.removeItem("tursina-token");
+  };
 
   const value = {
     user,
     login,
     logout,
-    isLoading
-  }
+    isLoading,
+  };
 
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
+  return context;
 }

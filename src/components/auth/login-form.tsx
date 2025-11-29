@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -178,38 +177,9 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      id="rememberMe"
-                      name="rememberMe"
-                      checked={formData.rememberMe}
-                      onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, rememberMe: checked as boolean }))
-                      }
-                      disabled={isLoading}
-                      className="data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600 rounded"
-                    />
-                    <Label
-                      htmlFor="rememberMe"
-                      className="text-sm font-normal text-gray-700 cursor-pointer select-none"
-                    >
-                      Ingat saya
-                    </Label>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="p-0 h-auto text-sm text-orange-600 hover:text-orange-700 font-medium"
-                    disabled={isLoading}
-                  >
-                    Lupa kata sandi?
-                  </Button>
-                </div>
-
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+                  className="w-full h-12 bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
                   disabled={isLoading}
                 >
                   {isLoading ? (
