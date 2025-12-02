@@ -228,7 +228,7 @@ export default function LoginPage() {
 
           {/* Tagline */}
           <p className="text-orange-100 bottom-8 mb-8 font-light tracking-wide text-sm">
-            © 2024 Tursina Kebab. All rights reserved.
+            © 2025 Tursina Kebab. All rights reserved.
           </p>
 
           {/* Copyright */}

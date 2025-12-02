@@ -4,14 +4,6 @@ import { useEffect, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { API_ENDPOINTS } from '@/app/api/api'
 import { toast } from 'sonner'
 import OutletTable from './components/OutletTable'
@@ -22,6 +14,7 @@ interface Outlet {
   id: number
   location: string
   link: string
+  is_active: boolean
 }
 
 export default function OutletPage() {
@@ -95,6 +88,7 @@ export default function OutletPage() {
 
       data.append('location', formData.location)
       data.append('link', formData.link)
+      data.append('is_active', formData.is_active ? '1' : '0')
 
       let response: Response;
 
@@ -106,6 +100,7 @@ export default function OutletPage() {
           body: data,
         })
       } else {
+        data.append('is_active', 'true')
         response = await fetch(API_ENDPOINTS.OUTLET, {
           method: 'POST',
           body: data,

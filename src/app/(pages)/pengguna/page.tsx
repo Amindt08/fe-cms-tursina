@@ -36,6 +36,7 @@ export default function Pengguna() {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<boolean>(false)
+  const [updatingStatus, setUpdatingStatus] = useState<boolean>(false)
 
   useEffect(() => {
     fetchPengguna()
@@ -67,6 +68,41 @@ export default function Pengguna() {
     }
   }
 
+  const handleStatusChange = async (id: number, newStatus: 'active' | 'inactive') => {
+    try {
+      setUpdatingStatus(true)
+
+      // Update status di backend
+      const response = await fetch(API_ENDPOINTS.USER_BY_ID(id), {
+        method: 'PUT',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: newStatus
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Gagal mengubah status')
+      }
+
+      // Update status di state lokal
+      setPengguna(prevPengguna =>
+        prevPengguna.map(p =>
+          p.id === id ? { ...p, status: newStatus } : p
+        )
+      )
+
+      toast.success(`Status berhasil diubah menjadi ${newStatus === 'active' ? 'Aktif' : 'Nonaktif'}`)
+    } catch (err) {
+      console.error('Error updating status:', err)
+      toast.error('Gagal mengubah status pengguna')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   const filteredPengguna = pengguna.filter(pengguna => {
     const matchesSearch = pengguna.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pengguna.role.toLowerCase().includes(searchTerm.toLowerCase())
@@ -92,53 +128,53 @@ export default function Pengguna() {
   }
 
   const handleSave = async (formData: Omit<Pengguna, 'id'>) => {
-  try {
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    const payload = {
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      status: formData.status
-    };
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        status: formData.status
+      };
 
-    let response: Response;
+      let response: Response;
 
-    if (editingPengguna) {
-      // UPDATE USER
-      response = await fetch(API_ENDPOINTS.USER_BY_ID(editingPengguna.id), {
-        method: 'PUT',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // CREATE USER
-      response = await fetch(API_ENDPOINTS.USERS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      if (editingPengguna) {
+        // UPDATE USER
+        response = await fetch(API_ENDPOINTS.USER_BY_ID(editingPengguna.id), {
+          method: 'PUT',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // CREATE USER
+        response = await fetch(API_ENDPOINTS.USERS, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+
+        throw new Error(errorData?.error || "Gagal menyimpan pengguna");
+      }
+
+      toast.success(editingPengguna ? "Berhasil update pengguna" : "Berhasil tambah pengguna");
+
+      await fetchPengguna();
+      setIsDialogOpen(false);
+      setEditingPengguna(null);
+
+    } catch (err) {
+      console.error("Error saving pengguna:", err);
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setSaving(false);
     }
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-
-      throw new Error(errorData?.error || "Gagal menyimpan pengguna");
-    }
-
-    toast.success(editingPengguna ? "Berhasil update pengguna" : "Berhasil tambah pengguna");
-
-    await fetchPengguna();
-    setIsDialogOpen(false);
-    setEditingPengguna(null);
-
-  } catch (err) {
-    console.error("Error saving pengguna:", err);
-    toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const confirmDelete = async () => {
     if (!penggunaToDelete) return
@@ -232,8 +268,10 @@ export default function Pengguna() {
         users={filteredPengguna}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onStatusChange={handleStatusChange}
         loading={loading}
         error={error}
+        updatingStatus={updatingStatus}
       />
 
       {/* Add/Edit Dialog */}

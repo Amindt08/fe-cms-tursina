@@ -22,7 +22,8 @@ interface Membership {
   outlet_id: number,
   points: number,
   total_points_earned: number,
-  total_points_redeemed: number
+  total_points_redeemed: number,
+  is_active: boolean
 }
 
 interface MembershipTableProps {

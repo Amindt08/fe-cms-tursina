@@ -27,7 +27,8 @@ interface Membership {
   outlet_id: number,
   points: number, 
   total_points_earned: number, 
-  total_points_redeemed: number 
+  total_points_redeemed: number,
+  is_active: boolean 
 }
 
 export default function Membership() {
@@ -140,7 +141,8 @@ export default function Membership() {
         outlet_id: formData.outlet_id,
         points: formData.points || 0,
         total_points_earned: formData.total_points_earned || 0,
-        total_points_redeemed: formData.total_points_redeemed || 0
+        total_points_redeemed: formData.total_points_redeemed || 0,
+        is_active: formData.is_active ? 1 : 0
       }
 
       let response: Response;

@@ -13,6 +13,7 @@ interface Outlet {
   id: number
   location: string
   link: string
+  is_active: boolean
 }
 
 interface OutletTableProps {

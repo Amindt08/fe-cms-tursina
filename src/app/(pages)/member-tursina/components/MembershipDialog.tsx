@@ -37,7 +37,8 @@ interface Membership {
   outlet_id: number,
   points: number,
   total_points_earned: number,
-  total_points_redeemed: number
+  total_points_redeemed: number,
+  is_active: boolean
 }
 
 interface MembershipDialogProps {
@@ -49,13 +50,13 @@ interface MembershipDialogProps {
   outlets: Outlet[]
 }
 
-export function MembershipDialog({ 
-  open, 
-  onOpenChange, 
-  member, 
-  onSave, 
+export function MembershipDialog({
+  open,
+  onOpenChange,
+  member,
+  onSave,
   saving = false,
-  outlets 
+  outlets
 }: MembershipDialogProps) {
   // Fungsi untuk mendapatkan initial form data
   const getInitialForm = (): Omit<Membership, "id"> => {
@@ -69,7 +70,8 @@ export function MembershipDialog({
         outlet_id: member.outlet_id,
         points: member.points,
         total_points_earned: member.total_points_earned,
-        total_points_redeemed: member.total_points_redeemed
+        total_points_redeemed: member.total_points_redeemed,
+        is_active: member.is_active
       }
     }
     return {
@@ -81,7 +83,8 @@ export function MembershipDialog({
       outlet_id: 0,
       points: 0,
       total_points_earned: 0,
-      total_points_redeemed: 0
+      total_points_redeemed: 0,
+      is_active: true
     }
   }
 
@@ -91,10 +94,10 @@ export function MembershipDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name.trim() || 
-        !formData.address.trim() || 
-        !formData.no_wa.trim() || 
-        !formData.outlet_id) {
+    if (!formData.name.trim() ||
+      !formData.address.trim() ||
+      !formData.no_wa.trim() ||
+      !formData.outlet_id) {
       alert('Harap lengkapi semua field yang diperlukan')
       return
     }
@@ -105,9 +108,9 @@ export function MembershipDialog({
   const handleOutletChange = (value: string) => {
     const outletId = parseInt(value)
     const selectedOutlet = outlets.find(outlet => outlet.id === outletId)
-    
-    setFormData({ 
-      ...formData, 
+
+    setFormData({
+      ...formData,
       outlet_id: outletId,
       outlet: selectedOutlet?.location || ''
     })
@@ -154,31 +157,31 @@ export function MembershipDialog({
             />
           </div>
 
-       <div className="space-y-2">
-  <Label className="text-sm font-medium truncate block">Outlet</Label>
-  <Select 
-    value={formData.outlet_id === 0 ? "" : formData.outlet_id.toString()} 
-    onValueChange={handleOutletChange}
-    required
-  >
-    <SelectTrigger className="w-full">
-      <SelectValue placeholder="Pilih lokasi outlet" />
-    </SelectTrigger>
-    <SelectContent className="max-w-[300px]">
-      {outlets.map((outlet) => (
-        <SelectItem 
-          key={outlet.id} 
-          value={outlet.id.toString()}
-          className="truncate max-w-[280px]"
-        >
-          <span className="truncate block" title={outlet.location}>
-            {outlet.location}
-          </span>
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium truncate block">Outlet</Label>
+            <Select
+              value={formData.outlet_id === 0 ? "" : formData.outlet_id.toString()}
+              onValueChange={handleOutletChange}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih lokasi outlet" />
+              </SelectTrigger>
+              <SelectContent className="max-w-[300px]">
+                {outlets.map((outlet) => (
+                  <SelectItem
+                    key={outlet.id}
+                    value={outlet.id.toString()}
+                    className="truncate max-w-[280px]"
+                  >
+                    <span className="truncate block" title={outlet.location}>
+                      {outlet.location}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Menampilkan points hanya untuk edit mode */}
           {member && (
@@ -202,8 +205,8 @@ export function MembershipDialog({
           )}
 
           <DialogFooter>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
             >

@@ -12,11 +12,14 @@ import {
 import {
   Loader2
 } from 'lucide-react'
+import { Label } from '@radix-ui/react-label'
+import { Switch } from '@/components/ui/switch'
 
 interface Outlet {
   id: number
   location: string
   link: string
+  is_active: boolean
 }
 
 interface OutletDialogProps {
@@ -31,11 +34,13 @@ export function OutletDialog({ open, onOpenChange, outlet, onSave, saving = fals
   const initialForm: Omit<Outlet, "id"> = outlet
     ? {
       location: outlet.location,
-      link: outlet.link
+      link: outlet.link,
+      is_active: outlet.is_active
     }
     : {
       location: '',
-      link: ''
+      link: '',
+      is_active: true
     }
 
   const [formData, setFormData] = useState<Omit<Outlet, "id">>(initialForm)
@@ -84,6 +89,22 @@ export function OutletDialog({ open, onOpenChange, outlet, onSave, saving = fals
             <p className="text-xs text-gray-500">
               Masukkan link Google Maps lengkap untuk lokasi outlet
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="is_active">Status Aktif</Label>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, is_active: checked })
+                }
+              />
+              <Label htmlFor="is_active">
+                {formData.is_active ? 'Aktif' : 'Tidak Aktif'}
+              </Label>
+            </div>
           </div>
 
           <DialogFooter>
