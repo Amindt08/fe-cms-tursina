@@ -1,5 +1,7 @@
-export const api_url = "http://127.0.0.1:8000/api";
-export const api_image_url = "http://127.0.0.1:8000/images";
+// export const api_url = "http://127.0.0.1:8000/api";
+export const api_url = "https://api.tursinakebab.id/api";
+// export const api_image_url = "http://127.0.0.1:8000/images";
+export const api_image_url = "https:api.//tursinakebab.id/images";
 
 export const API_ENDPOINTS = {
     LOGIN: `${api_url}/login`,
